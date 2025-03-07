@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 /brain-tumor-mri-dataset/
 /brain_tumor_dataset
+model_1.keras
