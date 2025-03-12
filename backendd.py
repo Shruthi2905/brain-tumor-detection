@@ -36,7 +36,7 @@ model = None
 def load_model():
     global model
     try:
-        model_path = "model_100.h5"  # Using just the filename without the subfolder
+        model_path = "model_70.h5"  # Using just the filename without the subfolder
         logger.info(f"Loading model from: {model_path}")
         
         # Load model with optimizations
