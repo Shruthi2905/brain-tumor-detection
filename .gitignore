@@ -25,3 +25,8 @@ dist-ssr
 /brain-tumor-mri-dataset/
 /brain_tumor_dataset
 model_1.keras
+MRI_VGG_16.h5
+convert.py
+model_10.keras
+model_100.h5
+model.h5
