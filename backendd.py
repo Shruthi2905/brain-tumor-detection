@@ -29,33 +29,35 @@ CORS(app)  # Enable CORS for React frontend
 # Class labels
 CLASS_LABELS = ['glioma_tumor', 'meningioma_tumor', 'no_tumor', 'pituitary_tumor']
 
-# Global model variable
-model = None
+# Global interpreter variable
+interpreter = None
 
 # Load model at startup
 def load_model():
-    global model
+    global interpreter
     try:
-        model_path = "model_70.h5"  # Using just the filename without the subfolder
-        logger.info(f"Loading model from: {model_path}")
+        model_path = "brain_tumor_classifier.tflite"
+        logger.info(f"Loading TFLite model from: {model_path}")
         
-        # Load model with optimizations
-        model = tf.keras.models.load_model(model_path, compile=False)
-        logger.info("Model loaded successfully")
+        # Load TFLite model
+        interpreter = tf.lite.Interpreter(model_path=model_path)
+        interpreter.allocate_tensors()
+        
+        logger.info("TFLite model loaded successfully")
         return True
     except Exception as e:
-        logger.error(f"Failed to load model: {str(e)}")
+        logger.error(f"Failed to load TFLite model: {str(e)}")
         return False
 
 # The single endpoint that handles everything
 @app.route('/predict', methods=['POST'])
 def predict():
-    global model
+    global interpreter
     start_time = time.time()
     logger.info("Received prediction request")
     
     # Load model if not already loaded
-    if model is None:
+    if interpreter is None:
         logger.info("Model not loaded yet, loading now...")
         success = load_model()
         if not success:
@@ -94,7 +96,7 @@ def predict():
             img_array = np.array(img) / 255.0
             
             # Expand dimensions for model input
-            img_array = np.expand_dims(img_array, axis=0)
+            img_array = np.expand_dims(img_array, axis=0).astype(np.float32)
             
             logger.info(f"Image preprocessing completed in {time.time() - preprocess_start:.3f} seconds")
         except Exception as e:
@@ -106,7 +108,18 @@ def predict():
             logger.info("Starting prediction")
             predict_start = time.time()
             
-            predictions = model.predict(img_array, verbose=0)  # Turn off verbose output
+            # Get input and output tensors
+            input_details = interpreter.get_input_details()
+            output_details = interpreter.get_output_details()
+            
+            # Set input tensor
+            interpreter.set_tensor(input_details[0]['index'], img_array)
+            
+            # Run inference
+            interpreter.invoke()
+            
+            # Get prediction results
+            predictions = interpreter.get_tensor(output_details[0]['index'])
             
             predicted_class_index = np.argmax(predictions[0])
             predicted_class = CLASS_LABELS[predicted_class_index]

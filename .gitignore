@@ -30,3 +30,5 @@ convert.py
 model_10.keras
 model_100.h5
 model.h5
+best_model.keras
+brain_tumor_classifier.tflite
