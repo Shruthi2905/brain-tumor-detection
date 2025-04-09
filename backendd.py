@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
 
-# Class labels
+# Class labels - ensure these match the order of your model's training classes
 CLASS_LABELS = ['glioma_tumor', 'meningioma_tumor', 'no_tumor', 'pituitary_tumor']
 
 # Global interpreter variable
@@ -36,18 +36,47 @@ interpreter = None
 def load_model():
     global interpreter
     try:
-        model_path = "brain_tumor_classifier.tflite"
+        model_path = "bt_classifier.tflite"
         logger.info(f"Loading TFLite model from: {model_path}")
         
         # Load TFLite model
         interpreter = tf.lite.Interpreter(model_path=model_path)
         interpreter.allocate_tensors()
         
+        # Get model details
+        input_details = interpreter.get_input_details()
+        logger.info(f"Model input shape: {input_details[0]['shape']}")
+        logger.info(f"Model input type: {input_details[0]['dtype']}")
+        
         logger.info("TFLite model loaded successfully")
         return True
     except Exception as e:
         logger.error(f"Failed to load TFLite model: {str(e)}")
         return False
+
+# Preprocess image to match training configuration
+def preprocess_image(img):
+    # Get input details to determine expected input shape
+    input_details = interpreter.get_input_details()
+    target_size = input_details[0]['shape'][1:3]  # Height and width
+    
+    # Convert to RGB if not already
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    
+    # Resize to match model's expected dimensions
+    img = img.resize((target_size[1], target_size[0]))
+    
+    # Convert to numpy array and apply preprocessing
+    img_array = np.array(img)
+    
+    # Normalize to [0,1] range - this matches your training preprocessing
+    img_array = img_array / 255.0
+    
+    # Add batch dimension
+    img_array = np.expand_dims(img_array, axis=0).astype(np.float32)
+    
+    return img_array
 
 # The single endpoint that handles everything
 @app.route('/predict', methods=['POST'])
@@ -82,26 +111,17 @@ def predict():
             logger.info("Starting image preprocessing")
             preprocess_start = time.time()
             
-            # Read and preprocess the image
+            # Read the image
             img = Image.open(io.BytesIO(file.read()))
             
-            # Convert to RGB if not already
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-                
-            # Resize image to match model input shape (most models use 224x224 or similar)
-            img = img.resize((224, 224))
-            
-            # Convert to numpy array and normalize
-            img_array = np.array(img) / 255.0
-            
-            # Expand dimensions for model input
-            img_array = np.expand_dims(img_array, axis=0).astype(np.float32)
+            # Preprocess the image
+            img_array = preprocess_image(img)
             
             logger.info(f"Image preprocessing completed in {time.time() - preprocess_start:.3f} seconds")
+            logger.info(f"Preprocessed image shape: {img_array.shape}")
         except Exception as e:
             logger.error(f"Image processing error: {str(e)}")
-            return jsonify({"error": "Failed to process the image"}), 400
+            return jsonify({"error": f"Failed to process the image: {str(e)}"}), 400
         
         # Make prediction
         try:
@@ -112,6 +132,10 @@ def predict():
             input_details = interpreter.get_input_details()
             output_details = interpreter.get_output_details()
             
+            # Log the expected input shape
+            logger.info(f"Model expects input shape: {input_details[0]['shape']}")
+            logger.info(f"Actual input shape: {img_array.shape}")
+            
             # Set input tensor
             interpreter.set_tensor(input_details[0]['index'], img_array)
             
@@ -120,6 +144,9 @@ def predict():
             
             # Get prediction results
             predictions = interpreter.get_tensor(output_details[0]['index'])
+            
+            # Log raw predictions for debugging
+            logger.info(f"Raw prediction values: {predictions[0]}")
             
             predicted_class_index = np.argmax(predictions[0])
             predicted_class = CLASS_LABELS[predicted_class_index]
@@ -140,14 +167,15 @@ def predict():
             })
         except Exception as e:
             logger.error(f"Prediction error: {str(e)}")
-            return jsonify({"error": "Error during prediction process"}), 500
+            return jsonify({"error": f"Error during prediction process: {str(e)}"}), 500
     
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    # Load model at startup instead of on first request
+    # Load model at startup
+    load_model()
     
     port = int(os.environ.get("PORT", 5000))
     logger.info(f"Starting server on port {port}")

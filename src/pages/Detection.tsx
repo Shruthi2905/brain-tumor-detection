@@ -135,29 +135,8 @@ function Detection() {
               <p className="text-xl font-medium">
                 Diagnosis: <span className="font-bold">{formatTumorName(result.prediction)}</span>
               </p>
-              <p className="text-gray-800">
-                Confidence: <span className="font-medium">{(result.confidence * 100).toFixed(2)}%</span>
-              </p>
               
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">Probability Distribution:</h4>
-                <div className="space-y-2">
-                  {Object.entries(result.probabilities).map(([className, probability]) => (
-                    <div key={className} className="flex items-center">
-                      <div className="w-40 text-sm">{formatTumorName(className)}:</div>
-                      <div className="flex-1 bg-gray-200 rounded-full h-4">
-                        <div 
-                          className="bg-blue-600 h-4 rounded-full" 
-                          style={{ width: `${probability * 100}%` }}
-                        ></div>
-                      </div>
-                      <div className="ml-3 min-w-[60px] text-right text-sm">
-                        {(probability * 100).toFixed(2)}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              
             </div>
           </div>
         )}

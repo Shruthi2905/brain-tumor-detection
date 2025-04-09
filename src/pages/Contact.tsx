@@ -8,11 +8,49 @@ function Contact() {
     subject: '',
     message: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', formData);
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+    
+    try {
+      // Create mailto URL with form data
+      const mailtoUrl = `mailto:detectiontumor@gmail.com?subject=${encodeURIComponent(
+        formData.subject
+      )}&body=${encodeURIComponent(
+        `Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`
+      )}`;
+      
+      // Open email client
+      window.location.href = mailtoUrl;
+      
+      setSubmitStatus({
+        success: true,
+        message: "Email client opened. Please send the email from your mail application."
+      });
+      
+      // Reset form after successful submission
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+      });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      setSubmitStatus({
+        success: false,
+        message: "There was an error opening your email client. Please try again or contact us directly."
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -38,7 +76,7 @@ function Contact() {
               <Mail className="h-6 w-6 text-blue-600 mr-4" />
               <div>
                 <h3 className="font-semibold">Email</h3>
-                <p className="text-gray-600">tumordetection@gmail.com</p>
+                <p className="text-gray-600">detectiontumor@gmail.com</p>
               </div>
             </div>
 
@@ -46,7 +84,7 @@ function Contact() {
               <Phone className="h-6 w-6 text-blue-600 mr-4" />
               <div>
                 <h3 className="font-semibold">Phone</h3>
-                <p className="text-gray-600">+91 1122334455</p>
+                <p className="text-gray-600">+91 9390948610</p>
               </div>
             </div>
 
@@ -55,9 +93,9 @@ function Contact() {
               <div>
                 <h3 className="font-semibold">Address</h3>
                 <p className="text-gray-600">
-                  123 Medical Center Drive<br />
-                  Suite 456<br />
-                  San Francisco, CA 94105
+                  Bhavans Vivekananda College<br />
+                  Sainikpuri<br />
+                  Hyderabad, Telangana.
                 </p>
               </div>
             </div>
@@ -66,6 +104,13 @@ function Contact() {
 
         <div className="bg-white rounded-xl shadow-sm p-8">
           <h2 className="text-2xl font-semibold mb-6">Send us a message</h2>
+          
+          {submitStatus && (
+            <div className={`mb-4 p-3 rounded ${submitStatus.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {submitStatus.message}
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -130,9 +175,16 @@ function Contact() {
             <button
               type="submit"
               className="w-full bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 flex items-center justify-center"
+              disabled={isSubmitting}
             >
-              <Send className="h-5 w-5 mr-2" />
-              Send Message
+              {isSubmitting ? (
+                <span>Sending...</span>
+              ) : (
+                <>
+                  <Send className="h-5 w-5 mr-2" />
+                  Send Message
+                </>
+              )}
             </button>
           </form>
         </div>
